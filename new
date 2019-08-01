@@ -1,0 +1,1334 @@
+package com.controller;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.model.Employee;
+import com.model.EmployeeHobby;
+import com.model.EmployeeSkill;
+import com.service.EmployeeHobbyService;
+import com.service.EmployeeService;
+import com.service.EmployeeSkillService;
+
+@Controller
+public class MainController 
+{
+	@Autowired
+	 EmployeeService employeeService;
+	@Autowired
+	EmployeeHobbyService employeeHobbyService;
+	@Autowired
+	EmployeeSkillService employeeSkillService;
+	
+	public List<EmployeeHobby> getEmployeeHobby()
+	{
+		List<EmployeeHobby> hobby= new ArrayList<>();
+		hobby.add(new EmployeeHobby("cricket"));
+		hobby.add(new EmployeeHobby("hockey"));
+		hobby.add(new EmployeeHobby("football"));
+		hobby.add(new EmployeeHobby("vollyball"));
+		return hobby;
+	}
+	public List<EmployeeSkill> getEmployeeSkill()
+	{
+		List<EmployeeSkill> skills=new ArrayList<>();
+		skills.add(new EmployeeSkill("C"));
+		skills.add(new EmployeeSkill("C++"));
+		skills.add(new EmployeeSkill("JAVA"));
+		skills.add(new EmployeeSkill("PHP"));
+		skills.add(new EmployeeSkill(".NET"));
+		return skills;
+	}
+	
+	@RequestMapping(value="/")
+	public ModelAndView getHome(ModelAndView model)
+	{
+		List<Employee> employess=employeeService.getAllEmployee();
+		List<EmployeeHobby> hobbies=employeeHobbyService.getAllHobby();
+		List<EmployeeSkill> skills=employeeSkillService.getAllSkill();
+		model.addObject("employess", employess);
+		model.addObject("hobbies", hobbies);
+		model.addObject("skills",skills);
+		model.setViewName("home");
+		return model;
+	}
+	@RequestMapping(value="/newEmployee",method = RequestMethod.GET)
+	public ModelAndView newEmployee(ModelAndView model)
+	{	
+			/*for Employee hobby checkbox*/
+		List<EmployeeHobby> hobby= getEmployeeHobby();
+			/*for Employee Skills listbox*/
+		List<EmployeeSkill> skill=getEmployeeSkill();
+			/*for Employee Country dropdown*/
+		model.addObject("hobby",hobby);
+		model.addObject("skill",skill);
+		Employee employee = new Employee();
+		model.addObject("employee",employee);
+		model.setViewName("EmployeeForm");
+		return model;
+	}
+	@RequestMapping(value="/editEmployee")
+	public ModelAndView editEmployee(HttpServletRequest req)
+	{
+		ModelAndView model=new ModelAndView("EmployeeForm");
+			int eid=Integer.parseInt(req.getParameter("eid"));
+			Employee employee=employeeService.getEmployeeById(eid);
+			List<EmployeeHobby> hobby= getEmployeeHobby();
+			List<EmployeeSkill> skill=getEmployeeSkill();
+			
+			List<EmployeeSkill> empskill=employeeSkillService.getSkillsForEmployee(eid);
+			List<EmployeeHobby> emphobby=employeeHobbyService.getHobbiesForEmployee(eid);
+			employee.setEmployeeskill(empskill);
+			model.addObject("hobby",hobby);
+			model.addObject("skill",skill);
+			model.addObject("employee", employee);
+			model.addObject("emphobby",emphobby);
+			model.addObject("empskill", empskill);
+			return model;
+	}
+	@RequestMapping(value="/saveEmployee",method=RequestMethod.POST)
+	public ModelAndView saveEmployee(@ModelAttribute Employee employee)
+	{
+		ModelAndView model=new ModelAndView();
+/*		System.out.println(employee.toString());*/
+		List<EmployeeHobby> hobby=employee.getEmployeehobby();
+		List<EmployeeSkill> skills=employee.getEmployeeskill();
+		/*System.out.println(hobby);*/
+		for(EmployeeHobby h:hobby)
+			h.setEmployee(employee);
+		
+		for(EmployeeSkill s:skills)
+			s.setEmployee(employee);
+		
+		if(employee.getEid()==0)
+		{
+			employeeService.insertEmployee(employee);
+			employeeHobbyService.insertHobbies(hobby);
+			employeeSkillService.insertSkills(skills);
+		}
+		else
+		{
+			employeeService.updateEmployee(employee);
+			employeeHobbyService.updateHobbies(hobby, employee.getEid());
+			employeeSkillService.updateSkills(skills,employee.getEid() );
+		}
+		model.setViewName("redirect:/");
+		return model;
+	}
+	@RequestMapping("/deleteEmployee")
+	public ModelAndView deleteEmployee(HttpServletRequest req)
+	{
+		ModelAndView model=new ModelAndView();
+		int eid=Integer.parseInt(req.getParameter("eid"));
+		employeeService.deleteEmployee(eid);
+		model.setViewName("redirect:/");
+		return model;
+	}
+	@RequestMapping(value="/searchEmployee")
+	public ModelAndView searchEmployee(ModelAndView model)
+	{
+		Employee e=new Employee();
+		List<EmployeeHobby> hobby=getEmployeeHobby();
+		List<EmployeeSkill> skill=getEmployeeSkill();
+		model.addObject("hobby", hobby);
+		model.addObject("skill", skill);
+		model.addObject("employee", e);
+		model.setViewName("SearchEmployee");
+		return model;
+	}
+	@RequestMapping(value="/search",method=RequestMethod.POST)
+	public ModelAndView searchResult(@ModelAttribute Employee employee)
+	{
+		ModelAndView model=new ModelAndView("SearchEmployee");
+		List<EmployeeHobby> hobby=getEmployeeHobby();
+		List<EmployeeSkill> skill=getEmployeeSkill();
+		model.addObject("hobby", hobby);
+		model.addObject("skill", skill);
+		List<Employee> list=employeeService.searchByEmployee(employee);
+		model.addObject("listEmployee", list);
+		return model;
+	}
+}
+-------------
+package com.dao;
+
+import java.util.List;
+
+import com.model.Employee;
+
+public interface EmployeeDao 
+{
+	public void insertEmployee(Employee employee);
+	public Employee getEmployeeById(int eid);
+	public List<Employee> getAllEmployee();
+	public Employee updateEmployee(Employee employee);
+	public void deleteEmployee(int eid);
+	public List<Employee> searchByEmployee(Employee employee);
+}
+-----------------
+package com.dao;
+
+import java.util.List;
+
+import org.hibernate.Query;
+import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.model.Employee;
+import com.model.EmployeeHobby;
+import com.model.EmployeeSkill;
+import com.service.EmployeeHobbyService;
+import com.service.EmployeeSkillService;
+
+@Repository
+public class EmployeeDaoImpl implements EmployeeDao{
+
+	@Autowired
+	SessionFactory sessionFactory;
+	@Autowired
+	EmployeeHobbyService employeeHobbyService;
+	@Autowired
+	EmployeeSkillService employeeSkillService;
+	
+	@Transactional
+	public void insertEmployee(Employee employee) {
+		sessionFactory.getCurrentSession().save(employee);
+		this.sessionFactory.close();
+	}
+
+	@Transactional
+	public Employee getEmployeeById(int eid) {
+		Employee e=(Employee) sessionFactory.getCurrentSession().get(Employee.class,eid);
+		this.sessionFactory.close();
+		return e;
+	}
+
+	@SuppressWarnings("unchecked")
+	
+	@Transactional
+	public List<Employee> getAllEmployee() {
+		List<Employee> em=sessionFactory.getCurrentSession().createQuery(" from Employee").list();
+		this.sessionFactory.close();
+		return em;
+	}
+
+	
+	@Transactional
+	public Employee updateEmployee(Employee employee) {
+		sessionFactory.getCurrentSession().update(employee);
+		this.sessionFactory.close();
+		return employee;
+	}
+
+	@SuppressWarnings({ "unused", "unchecked" })
+	@Transactional
+	public void deleteEmployee(int eid) {
+		Employee emp=(Employee)sessionFactory.getCurrentSession().load(Employee.class, eid);
+		
+		List<EmployeeHobby> eh=sessionFactory.getCurrentSession().createQuery("from EmployeeHobby where employee=:emp").setParameter("emp", emp).list();
+		for(EmployeeHobby h:eh)
+			this.sessionFactory.getCurrentSession().delete(h);
+			
+		List<EmployeeSkill> es=sessionFactory.getCurrentSession().createQuery("from EmployeeSkill where employee=:emp").setParameter("emp",emp).list();
+		for(EmployeeSkill s:es)
+				this.sessionFactory.getCurrentSession().delete(s);
+		
+		this.sessionFactory.getCurrentSession().delete(emp);
+		this.sessionFactory.close();
+	}
+	 @SuppressWarnings("unchecked")
+	@Transactional
+	 private List<Employee> getEmployee(Employee employee)
+	 {
+		 StringBuffer qry=new StringBuffer();
+			int flag=0;
+			qry.append("from Employee ");
+			if(employee.getEid() != 0 && flag == 0)
+			{	
+				flag=1;
+				qry.append(" where eid=:eid ");
+			}
+			else if(employee.getEid() != 0 && flag == 1)
+			{
+				flag=1;
+				qry.append(" and eid=:eid");
+			}
+			if(employee.getEname() != "" && flag == 1)
+			{	
+				qry.append(" and ename=:ename ");
+			}
+			else if(employee.getEname() != ""  && flag == 0)
+			{
+				flag=1;
+				qry.append(" where ename = :ename ");
+			}
+			if(employee.getSalary() != 0 && flag ==1)
+			{	
+				qry.append(" and salary=:salary ");
+			}
+			else if(employee.getSalary() !=0 && flag == 0)
+			{
+				flag=1;
+				qry.append(" where salary=:salary ");
+			}
+			if(employee.getGender() != null && flag ==1)
+			{
+				qry.append(" and gender=:gender ");
+			}
+			else if(employee.getGender() != null && flag == 0)
+			{
+				flag=1;
+				qry.append(" where gender = :gender ");
+			}
+			if(employee.getEmployeehobby() != null && flag==1)
+			{
+				qry.append("and employeehobby = :employeehobby");
+			}
+			else if(employee.getEmployeehobby() != null && flag==0)
+			{
+				flag=1;
+				qry.append("where employeehobby = :employeehobby");
+			}
+			/*if(employee.getEmployeehobby() != null && flag !=0)
+			{
+				flag=1;
+				qry.append(" and employeehobby in (:hobbylist)");
+			}
+			*/
+			System.out.println(qry.toString());
+		Query q= this.sessionFactory.getCurrentSession().createQuery(qry.toString());
+		if(employee.getEid() != 0)
+			q.setParameter("eid", employee.getEid());
+		if(employee.getEname() != "")	
+			q.setParameter("ename", employee.getEname());
+		if(employee.getSalary() != 0)	
+			q.setParameter("salary", employee.getSalary());
+		if(employee.getGender() != null)
+			q.setParameter("gender", employee.getGender());
+		if(employee.getEmployeehobby() != null)
+			q.setParameterList("employeehobby", employee.getEmployeehobby());
+		
+		List<Employee> list=q.list();
+		 return list;
+	 }
+	@Override
+	@Transactional
+	public List<Employee> searchByEmployee(Employee employee) {
+		
+		List<Employee> employees=getEmployee(employee);
+		for(Employee emp:employees)
+		{
+			emp.setEmployeehobby(employeeHobbyService.getHobbiesForEmployee(emp.getEid()));
+			emp.setEmployeeskill(employeeSkillService.getSkillsForEmployee(emp.getEid()));
+		}
+		return employees;
+	}
+
+}
+--------
+package com.dao;
+
+import java.util.List;
+
+import com.model.Employee;
+import com.model.EmployeeHobby;
+
+public interface EmployeeHobbyDao 
+{
+	public void insertHobbies(List<EmployeeHobby> hobbieslist);
+	public List<EmployeeHobby> getHobbiesForEmployee(int eid);
+	public List<EmployeeHobby> getAllHobby();
+	public void updateHobbies(List<EmployeeHobby> hobbieslist,int eid);
+	public List<EmployeeHobby> getHobbyFromObject(Employee e);
+}
+-----------------
+package com.dao;
+
+import java.util.List;
+
+import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.model.Employee;
+import com.model.EmployeeHobby;
+
+@Repository
+public class EmployeeHobbyDaoImpl implements EmployeeHobbyDao {
+
+	@Autowired
+	SessionFactory sesssionFactory;
+	
+	public void insertHobbies(List<EmployeeHobby> hobbieslist) {
+		for(EmployeeHobby h: hobbieslist)
+		{
+			sesssionFactory.getCurrentSession().save(h);
+		}
+		this.sesssionFactory.close();
+	}
+
+	@SuppressWarnings("unchecked")
+	public List<EmployeeHobby> getHobbiesForEmployee(int eid) {
+		List<EmployeeHobby> hobb=sesssionFactory.getCurrentSession().createQuery("select e from EmployeeHobby e join fetch e.employee where e.employee=:emp").setParameter("emp",(Employee)sesssionFactory.getCurrentSession().load(Employee.class, eid)).list();
+		this.sesssionFactory.close();
+		return hobb;
+	}
+
+	@SuppressWarnings({ "unused", "unchecked" })
+	public void updateHobbies(List<EmployeeHobby> hobbieslist,int eid) {
+		Employee e=(Employee)sesssionFactory.getCurrentSession().load(Employee.class, eid);
+		List<EmployeeHobby> eh=sesssionFactory.getCurrentSession().createQuery("from EmployeeHobby where employee=:emp").setParameter("emp", e).list();
+		for(EmployeeHobby h:eh)
+		{
+			this.sesssionFactory.getCurrentSession().delete(h);
+		}
+		for(EmployeeHobby h:hobbieslist)
+		{
+			sesssionFactory.getCurrentSession().save(h);
+		}
+		this.sesssionFactory.close();
+	}
+
+	@SuppressWarnings("unchecked")
+	public List<EmployeeHobby> getAllHobby() {
+		List<EmployeeHobby> h=sesssionFactory.getCurrentSession().createQuery("from EmployeeHobby").list();
+		this.sesssionFactory.close();
+		return h;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<EmployeeHobby> getHobbyFromObject(Employee e) {
+		return this.sesssionFactory.getCurrentSession().createQuery("from EmployeeHobby where employee=:emp").setParameter("emp", e).list();
+	}
+
+}
+----------------
+package com.dao;
+
+import java.util.List;
+
+import com.model.EmployeeSkill;
+
+
+public interface EmployeeSkillDao 
+{
+	public void insertSkills(List<EmployeeSkill> skilllist);
+	public List<EmployeeSkill> getSkillsForEmployee(int eid);
+	public List<EmployeeSkill> getAllSkill();
+	public void updateSkills(List<EmployeeSkill> skillslist,int eid);
+}
+---------------
+package com.dao;
+
+import java.util.List;
+
+import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.model.Employee;
+import com.model.EmployeeSkill;
+
+@Repository
+public class EmployeeSkillDaoImpl implements EmployeeSkillDao {
+
+	@Autowired
+	SessionFactory sessionFactory;
+	
+	@Override
+	public void insertSkills(List<EmployeeSkill> skilllist) {
+		for(EmployeeSkill es:skilllist)
+		{
+			sessionFactory.getCurrentSession().save(es);
+		}
+		this.sessionFactory.close();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<EmployeeSkill> getSkillsForEmployee(int eid) {
+		Employee e=(Employee) sessionFactory.getCurrentSession().load(Employee.class,eid);
+		List<EmployeeSkill> skill=sessionFactory.getCurrentSession().createQuery("from EmployeeSkill where employee=:emp").setParameter("emp",e).list();
+		this.sessionFactory.close();
+		return skill;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<EmployeeSkill> getAllSkill() {
+		List<EmployeeSkill> sk=sessionFactory.getCurrentSession().createQuery("from EmployeeSkill").list();
+		this.sessionFactory.close();
+		return sk;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public void updateSkills(List<EmployeeSkill> skillslist, int eid) {
+		Employee e=(Employee) sessionFactory.getCurrentSession().load(Employee.class, eid);
+		List<EmployeeSkill> es=this.sessionFactory.getCurrentSession().createQuery("from EmployeeSkill where employee=:e").setParameter("e", e).list();
+		for(EmployeeSkill es1:es)
+		{
+			this.sessionFactory.getCurrentSession().delete(es1);
+		}
+		for(EmployeeSkill es1:skillslist)
+		{
+			this.sessionFactory.getCurrentSession().save(es1);
+		}
+		this.sessionFactory.close();
+	}
+
+}
+-------------------
+package com.model;
+
+import java.util.List;
+import java.util.Set;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+
+
+@Entity
+@Table(name="employee")
+public class Employee 
+{
+	@Id
+	@Column
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
+	private int eid;
+	@Column
+	private String ename;
+	@Column
+	private int salary;
+	@Column
+	private String gender;
+	@OneToMany(mappedBy="employee",fetch=FetchType.EAGER)
+	private List<EmployeeHobby> employeehobby;
+	@OneToMany(mappedBy="employee",fetch=FetchType.LAZY)
+	private List<EmployeeSkill> employeeskill;
+	
+	public Employee() {
+
+	}
+	public int getEid() {
+		return eid;
+	}
+	public void setEid(int eid) {
+		this.eid = eid;
+	}
+	public String getEname() {
+		return ename;
+	}
+	public void setEname(String ename) {
+		this.ename = ename;
+	}
+	public int getSalary() {
+		return salary;
+	}
+	public void setSalary(int salary) {
+		this.salary = salary;
+	}
+	
+	public String getGender() {
+		return gender;
+	}
+	public void setGender(String gender) {
+		this.gender = gender;
+	}
+	
+	public List<EmployeeHobby> getEmployeehobby() {
+		return employeehobby;
+	}
+	public void setEmployeehobby(List<EmployeeHobby> employeehobby) {
+		this.employeehobby = employeehobby;
+	}
+	public List<EmployeeSkill> getEmployeeskill() {
+		return employeeskill;
+	}
+	public void setEmployeeskill(List<EmployeeSkill> employeeskill) {
+		this.employeeskill = employeeskill;
+	}
+	
+}
+------------
+package com.model;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+
+@Entity
+public class EmployeeHobby 
+{
+	@Id
+	@Column
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
+	private int hid;
+	@Column
+	private String hname;
+	@ManyToOne(fetch=FetchType.EAGER)
+	@JoinColumn(name="eid")
+	private Employee employee;
+	
+	public EmployeeHobby()
+	{
+		
+	}
+	public EmployeeHobby(String hname) {
+		super();
+		this.hname = hname;
+	}
+	public int getHid() {
+		return hid;
+	}
+	public void setHid(int hid) {
+		this.hid = hid;
+	}
+	public String getHname() {
+		return hname;
+	}
+	public void setHname(String hname) {
+		this.hname = hname;
+	}
+	public Employee getEmployee() {
+		return employee;
+	}
+	public void setEmployee(Employee employee) {
+		this.employee = employee;
+	}
+	@Override
+	public String toString() {
+		return "EmployeeHobby [hid=" + hid + ", hname=" + hname + ", employee=" + employee + "]".toString();
+	}
+	
+	
+}
+
+-------------------
+package com.model;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+
+@Entity
+public class EmployeeSkill 
+{
+	@Id
+	@Column
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
+	private int sid;
+	@Column
+	private String sname;
+	@ManyToOne(fetch=FetchType.EAGER)
+	@JoinColumn(name="eid")
+	private Employee employee;
+	
+	public EmployeeSkill() {
+	}
+	
+	public EmployeeSkill(String sname) {
+		super();
+		this.sname = sname;
+	}
+
+	public EmployeeSkill(int sid, String sname, Employee employee) {
+		super();
+		this.sid = sid;
+		this.sname = sname;
+		this.employee = employee;
+	}
+	public int getSid() {
+		return sid;
+	}
+	public void setSid(int sid) {
+		this.sid = sid;
+	}
+	public String getSname() {
+		return sname;
+	}
+	public void setSname(String sname) {
+		this.sname = sname;
+	}
+	public Employee getEmployee() {
+		return employee;
+	}
+	public void setEmployee(Employee employee) {
+		this.employee = employee;
+	}
+}
+---------------
+package com.service;
+
+import java.util.List;
+
+import com.model.Employee;
+import com.model.EmployeeHobby;
+
+public interface EmployeeHobbyService {
+	public void insertHobbies(List<EmployeeHobby> hobbieslist);
+	public List<EmployeeHobby> getHobbiesForEmployee(int eid);
+	public List<EmployeeHobby> getAllHobby();
+	public void updateHobbies(List<EmployeeHobby> hobbieslist,int eid);
+	public List<EmployeeHobby> getHobbyFromObject(Employee e);
+}
+------------------------
+package com.service;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.dao.EmployeeHobbyDao;
+import com.model.Employee;
+import com.model.EmployeeHobby;
+
+@Service
+@Transactional
+public class EmployeeHobbyServiceImpl implements EmployeeHobbyService {
+
+	@Autowired
+	EmployeeHobbyDao employeeHobbyDao;
+	
+	@Transactional
+	public void insertHobbies(List<EmployeeHobby> hobbieslist) {
+		employeeHobbyDao.insertHobbies(hobbieslist);	
+		
+	}
+	@Transactional
+	public List<EmployeeHobby> getHobbiesForEmployee(int eid) {
+		return employeeHobbyDao.getHobbiesForEmployee(eid);
+	}
+	@Transactional
+	public void updateHobbies(List<EmployeeHobby> hobbieslist, int eid) {
+		employeeHobbyDao.updateHobbies(hobbieslist, eid);
+	}
+	@Transactional
+	public List<EmployeeHobby> getAllHobby() {
+		return employeeHobbyDao.getAllHobby();
+	}
+	@Override
+	@Transactional
+	public List<EmployeeHobby> getHobbyFromObject(Employee e) {
+		return employeeHobbyDao.getHobbyFromObject(e);
+	}
+
+}
+----------------------------
+package com.service;
+
+import java.util.List;
+
+import com.model.Employee;
+
+public interface EmployeeService 
+{
+	public void insertEmployee(Employee employee);
+	public Employee getEmployeeById(int eid);
+	public List<Employee> getAllEmployee();
+	public Employee updateEmployee(Employee employee);
+	public void deleteEmployee(int eid);
+	public List<Employee> searchByEmployee(Employee employee);
+}
+----------------------
+package com.service;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import com.dao.EmployeeDao;
+import com.model.Employee;
+
+@Service
+public class EmployeeServiceImpl implements EmployeeService {
+
+	@Autowired
+	EmployeeDao employeeDao;
+	
+	
+	public void insertEmployee(Employee employee) {
+		employeeDao.insertEmployee(employee);
+	}
+
+	
+	public Employee getEmployeeById(int eid) {
+		return employeeDao.getEmployeeById(eid);
+	}
+
+	
+	public List<Employee> getAllEmployee() {
+		return employeeDao.getAllEmployee();
+	}
+
+	
+	public Employee updateEmployee(Employee employee) {
+		return employeeDao.updateEmployee(employee);
+	}
+
+	
+	public void deleteEmployee(int eid) {
+		employeeDao.deleteEmployee(eid);
+	}
+
+
+	@Override
+	public List<Employee> searchByEmployee(Employee employee) {
+		return employeeDao.searchByEmployee(employee);
+	}
+
+}
+-----------
+package com.service;
+
+import java.util.List;
+
+import com.model.EmployeeSkill;
+
+public interface EmployeeSkillService 
+{
+	public void insertSkills(List<EmployeeSkill> skilllist);
+	public List<EmployeeSkill> getSkillsForEmployee(int eid);
+	public List<EmployeeSkill> getAllSkill();
+	public void updateSkills(List<EmployeeSkill> skillslist,int eid);
+}
+-------------------
+package com.service;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.dao.EmployeeSkillDao;
+import com.model.EmployeeSkill;
+
+@Service
+@Transactional
+public class EmployeeSkillServiceImpl implements EmployeeSkillService{
+
+	@Autowired
+	EmployeeSkillDao employeeSkillDao;
+	
+	@Override
+	@Transactional
+	public void insertSkills(List<EmployeeSkill> skilllist) {
+		employeeSkillDao.insertSkills(skilllist);
+	}
+
+	@Override
+	@Transactional
+	public List<EmployeeSkill> getSkillsForEmployee(int eid) {
+		return employeeSkillDao.getSkillsForEmployee(eid);
+	}
+
+	@Override
+	@Transactional
+	public List<EmployeeSkill> getAllSkill() {
+		return employeeSkillDao.getAllSkill();
+	}
+
+	@Override
+	@Transactional
+	public void updateSkills(List<EmployeeSkill> skillslist, int eid) {
+		employeeSkillDao.updateSkills(skillslist, eid);
+	}
+}
+----------------
+package otherclasses;
+
+import com.model.Employee;
+import com.model.EmployeeHobby;
+
+public class SuperEmployee 
+{
+	private Employee employee;
+	private EmployeeHobby employeeHobby;
+	
+	
+	public SuperEmployee(Employee employee, EmployeeHobby employeeHobby) {
+		
+		this.employee = employee;
+		this.employeeHobby = employeeHobby;
+	}
+	public Employee getEmployee() {
+		return employee;
+	}
+	public void setEmployee(Employee employee) {
+		this.employee = employee;
+	}
+	public EmployeeHobby getEmployeeHobby() {
+		return employeeHobby;
+	}
+	public void setEmployeeHobby(EmployeeHobby employeeHobby) {
+		this.employeeHobby = employeeHobby;
+	}
+	
+	
+}
+
+---------------------
+
+EMPLOYEE.JSP
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+    <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
+    <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Employee Form</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+ <script type="text/javascript" src='<c:url value="/resources/js/externaljqry.js"/>'></script>
+</head>
+<body>
+<form:form id="form" action="saveEmployee" method="post" modelAttribute="employee">
+
+	ID:-<form:input path="eid" readonly="true"/><br>
+	Name:-<form:input path="ename"/><span id="spename"></span><br>
+	Salary:-<form:input path="salary"/><span id="spsalary"></span><br>
+	Gender:-&nbsp;&nbsp;<form:radiobutton path="gender" value="male" />Male
+						<form:radiobutton path="gender" value="female"/>Female&nbsp;&nbsp;&nbsp;<span id="spgender"></span><br>
+	<c:choose>
+		<c:when test="${employee.getEid() == 0 }">
+				Hobby:-<c:forEach items="${hobby}" var="checkbox" varStatus="count">
+				<form:checkbox path="employeehobby" label="${checkbox.getHname()}" value="${checkbox.getHname()}"/>
+		   </c:forEach><span id="spemployeehobby"></span><br>
+		Skill:-   <form:select path="employeeskill" multiple="false">
+		   	<form:option value="" label="-------SELECT-------" disabled="true"></form:option>
+		   	<c:forEach items="${skill}" var="drop">
+		   		<form:option value="${drop.getSname()}" label="${drop.getSname()}"></form:option>
+		   	</c:forEach>
+		   </form:select><span id="spemployeeskill"></span>
+	<br><input type="submit" value="Add" onclick="return validate();"/>
+	<button onclick="validate();"></button>	
+		</c:when>
+		<c:otherwise>
+			Hobby:-<c:forEach items="${hobby}" var="checkbox" varStatus="count" >
+						<c:set var="brk" value="0" scope="page" />
+						<c:set var="b" value="0" scope="page"/>
+						<c:forEach  items="${emphobby}"  var="hobbycheck" varStatus="c2">
+							<c:if test="${checkbox.getHname() eq hobbycheck.getHname() and brk eq 0}">
+								<c:set var="b" value="1" scope="page"/>
+								<c:set var="brk" value="1" scope="page" />
+							</c:if>
+							<c:if test="${checkbox.getHname() ne hobbycheck.getHname() and brk eq 0 }">
+								<c:set var="b" value="2" scope="page" />
+								<c:set var="brk" value="0" scope="page" />
+							</c:if>
+						</c:forEach>
+											
+						<c:if test="${b eq 1}">
+							<form:checkbox path="employeehobby" label="${checkbox.getHname()}" checked="checked" value="${checkbox.getHname()}"></form:checkbox>
+						</c:if>
+						<c:if test="${b eq 2}">
+							<form:checkbox path="employeehobby" label="${checkbox.getHname()}"  value="${checkbox.getHname()}"></form:checkbox>
+						</c:if>
+				   </c:forEach><br>
+				   Skill:-
+				   	<form:select path="employeeskill" multiple="true">
+				   			<form:option value="" label="-------SELECT-------" disabled="true"></form:option>
+				   			<c:forEach items="${skill}" var="sk">
+		   						<c:set var="brk1" value="0" scope="page" />
+								<c:set var="b1" value="0" scope="page"/>
+								<c:forEach  items="${empskill}"  var="skillcheck" varStatus="c2">
+									<c:if test="${sk.getSname() eq skillcheck.getSname() and brk1 eq 0}">
+										<c:set var="b1" value="1" scope="page"/>
+										<c:set var="brk1" value="1" scope="page" />
+									</c:if>
+									<c:if test="${sk.getSname() ne skillcheck.getSname() and brk1 eq 0 }">
+										<c:set var="b1" value="2" scope="page" />
+										<c:set var="brk1" value="0" scope="page" />
+									</c:if>
+								</c:forEach>											
+								<c:if test="${b1 eq 1}">
+									<form:option label="${sk.getSname()}" selected="selected" value="${sk.getSname()}"></form:option>
+								</c:if>
+								<c:if test="${b1 eq 2}">
+									<form:option label="${sk.getSname()}" value="${sk.getSname()}"></form:option>
+								</c:if>
+				   		  	</c:forEach>
+				   		 </form:select>
+					<input type="submit" value="Update"/>
+		</c:otherwise>
+	</c:choose>
+</form:form>
+</body>
+</html>
+
+------------------
+home.jsp
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1" pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+ <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Home Page</title>
+</head>
+<body>
+<a href="newEmployee">Add New Employee</a>&nbsp; |
+<a href="searchEmployee">Search Employee</a>
+<table border="1">
+	<tr>
+		<th>Id</th>
+		<th>Name</th>
+		<th>Salary</th>
+		<th>Gender</th>
+		<th>Hobbies</th>
+		<th>Skills</th>
+		<th>Actions</th>
+	</tr>
+	<c:forEach var="emp" items="${employess}">
+		<tr>
+			<td>${emp.eid}</td>
+			<td>${emp.ename}</td>
+			<td>${emp.salary}</td>
+			<td>${emp.gender}</td>
+			<td>
+				<c:forEach items="${hobbies}" var="hobb">
+					<c:if test="${emp.eid == hobb.employee.eid }">
+						[<c:out value="${hobb.hname}"></c:out>]&nbsp;
+					</c:if>
+				</c:forEach>
+			</td>
+			<td>
+			<c:forEach items="${skills}" var="sk">
+					<c:if test="${emp.eid == sk.employee.eid }">
+						[${sk.sname}]
+					</c:if>
+			</c:forEach>
+			</td>
+			<td>
+			<a href="editEmployee?eid=${emp.getEid()}">Edit | </a>
+			<a href="deleteEmployee?eid=${emp.getEid()}"> Delete </a>
+			</td>
+		</tr>
+	</c:forEach>
+</table>
+</body>
+</html>
+---------------
+searchemployee.jsp
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1" pageEncoding="ISO-8859-1"%>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Search Employee</title>
+</head>
+<body>
+<center><h2>Search Employee</h2></center>
+<br><br><br><br>
+<center>
+<form:form action="search" method="post" modelAttribute="employee">
+	<table>
+		<tr>
+			<td>ID:-</td>
+			<td><form:input path="eid"/></td>
+		</tr>
+		
+		<tr>
+			<td>Name:-</td>
+			<td><form:input path="ename"/></td>
+		</tr>
+		<tr>
+			<td>Salary:-</td>
+			<td><form:input path="salary"/></td>
+		</tr>
+		<tr>
+			<td>Gender:-</td>
+			<td>
+				<form:radiobutton path="gender" value="male" />Male
+				<form:radiobutton path="gender" value="female"/>Female
+			</td>
+		</tr>
+		<tr>
+			<td>Hobby:-</td>
+			<td>
+				<c:forEach items="${hobby}" var="checkbox" varStatus="count">
+					<form:checkbox path="employeehobby" label="${checkbox.getHname()}" value="${checkbox.getHname()}"/>
+					<c:if test="${(count.index +1) % 2 == 0}"><br></c:if>
+		   		</c:forEach>
+			</td>
+		</tr>
+		<tr>
+			<td>Skill:-</td>
+			<td>
+				<form:select path="employeeskill" multiple="false">
+		   			<form:option value="" label="-------SELECT-------" disabled="true"></form:option>
+		   			<c:forEach items="${skill}" var="drop">
+		   				<form:option value="${drop.getSname()}" label="${drop.getSname()}"></form:option>
+		   			</c:forEach>
+		   		</form:select>
+			</td>
+		</tr>
+		<tr>
+			<td>&nbsp;</td>
+			<td><input type="submit" value="Search"/></td>
+		</tr>
+	</table>
+</form:form>	
+
+<c:if test="${listEmployee != null}">
+		<table>
+			<tr>
+				<td>Eid</td>
+				<tD>Ename</tD>
+				<tD>Salary</tD>
+				<tD>gender</tD>
+				<tD>Hobbies</tD>
+				<tD>Skills</tD>	
+			</tr>
+			<c:forEach items="${listEmployee}" var="emp">
+			<tr>
+					<td>${emp.eid}</td>
+					<td>${emp.ename}</td>
+					<td>${emp.salary}</td>
+					<td>${emp.gender}</td>
+					<td>
+						<c:forEach items="${emp.employeehobby}" var="hobb">
+							[ ${hobb.hname} ]
+						</c:forEach>
+					</td>
+					<td>
+						<c:forEach items="${emp.employeeskill}" var="sk">
+							[ ${sk.sname} ]
+						</c:forEach>
+					</td>
+			</tr>
+			</c:forEach>
+		</table>
+</c:if>
+</center>
+</body>
+</html>
+
+--------------
+
+spring-servlet.xml
+
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+       http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+	
+	<context:component-scan base-package="com" />
+	<context:property-placeholder location="classpath:application.properties" />
+	<mvc:annotation-driven />
+	<mvc:resources location="/resources/" mapping="/resources/**"/>
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/views/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+	<bean class="org.apache.commons.dbcp2.BasicDataSource"
+		id="dataSource">
+		<property name="driverClassName" value="com.microsoft.sqlserver.jdbc.SQLServerDriver"></property>
+		<property name="url" value="jdbc:sqlserver://192.168.101.143:1440;databaseName=test_demo"></property>
+		<property name="username" value="eProcDeveloper"></property>
+		<property name="password" value="Epr0c@1234!"></property>
+	</bean>
+	
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"></property>
+		
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">${hibernate.dialect}</prop>
+				<prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+				<prop key="hibernate.format_sql">${hibernate.format_sql}</prop>
+				<prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+			</props>
+		</property>
+		<property name="packagesToScan" value="com.model"></property>
+		<!-- <property name="packagesToScan" value="com.model"></property> -->
+	</bean>
+	<bean id="transactionManager"
+  class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+    <property name="sessionFactory" ref="sessionFactory" />
+</bean>
+<tx:annotation-driven transaction-manager="transactionManager"/>
+</beans>
+-------------
+web.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd" id="WebApp_ID" version="3.0">
+  <display-name>spring-mvc-example</display-name>
+
+	<!-- Add Spring MVC DispatcherServlet as front controller -->
+	<servlet>
+        <servlet-name>spring</servlet-name>
+        <servlet-class>
+                org.springframework.web.servlet.DispatcherServlet
+        </servlet-class>
+        <init-param>
+       		<param-name>contextConfigLocation</param-name>
+       		<param-value>/WEB-INF/spring-servlet.xml</param-value>
+    		</init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+ 
+    <servlet-mapping>
+        <servlet-name>spring</servlet-name>
+        <url-pattern>/</url-pattern> 
+    </servlet-mapping>
+    
+ </web-app>
+
+------------
+pom.xml
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com</groupId>
+  <artifactId>spring</artifactId>
+  <packaging>war</packaging>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>spring Maven Webapp</name>
+  <url>http://maven.apache.org</url>
+  <dependencies>
+	    <dependency>
+	      <groupId>junit</groupId>
+	      <artifactId>junit</artifactId>
+	      <version>3.8.1</version>
+	      <scope>test</scope>
+	    </dependency>
+	     <dependency>
+       <groupId>org.slf4j</groupId>
+       <artifactId>slf4j-api</artifactId>
+       <version>1.7.5</version>
+   </dependency>
+   <dependency>
+       <groupId>org.slf4j</groupId>
+       <artifactId>slf4j-log4j12</artifactId>
+       <version>1.7.5</version>
+   </dependency>
+        <dependency>
+		    <groupId>org.springframework</groupId>
+		    <artifactId>spring-jdbc</artifactId>
+		    <version>4.0.0.RELEASE</version>
+		</dependency>
+        <!-- <dependency>
+		    <groupId>com.microsoft.sqlserver</groupId>
+		    <artifactId>mssql-jdbc</artifactId>
+		    <version>6.1.0.jre7</version>
+		    <scope>test</scope>
+		</dependency> -->
+		<dependency>
+    <groupId>com.microsoft</groupId>
+    <artifactId>sqljdbc4</artifactId>
+    <version>3.0</version>
+</dependency>
+		 <dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>4.0.0.RELEASE</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.apache.commons</groupId>
+		    <artifactId>commons-dbcp2</artifactId>
+		    <version>2.0</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.springframework</groupId>
+		    <artifactId>spring-tx</artifactId>
+		    <version>4.0.0.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+			<version>4.0.0.RELEASE</version>
+		</dependency>
+		 <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-orm</artifactId>
+            <version>4.0.0.RELEASE</version>
+        </dependency>
+         <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>3.6.9.Final</version>
+        </dependency>
+        <dependency>
+		    <groupId>org.hibernate</groupId>
+		    <artifactId>hibernate-c3p0</artifactId>
+		    <version>3.6.9.Final</version>
+		</dependency>
+        <!-- Servlet -->
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>2.5</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet.jsp</groupId>
+			<artifactId>jsp-api</artifactId>
+			<version>2.1</version>
+			<scope>provided</scope>
+		</dependency>
+		
+<dependency>
+    <groupId>javax.persistence</groupId>
+    <artifactId>persistence-api</artifactId>
+    <version>1.0</version>
+</dependency>
+		
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>jstl</artifactId>
+			<version>1.2</version>
+		</dependency>
+		<dependency>
+    <groupId>javassist</groupId>
+    <artifactId>javassist</artifactId>
+    <version>3.12.1.GA</version>
+</dependency>
+  </dependencies>
+  <build>
+    <finalName>spring</finalName>
+  </build>
+</project>
+
