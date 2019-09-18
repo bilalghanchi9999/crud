@@ -1,0 +1,575 @@
+-----------POM--------------
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.bilal</groupId>
+	<artifactId>studentwebserviceserver</artifactId>
+	<packaging>war</packaging>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>studentwebserviceserver Spring-WS Application</name>
+	<url>http://www.springframework.org/spring-ws</url>
+	<build>
+		<finalName>studentwebserviceserver</finalName>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.ws</groupId>
+			<artifactId>spring-ws-core</artifactId>
+			<version>2.1.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>com.microsoft</groupId>
+			<artifactId>sqljdbc4</artifactId>
+			<version>3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.7.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-dbcp2</artifactId>
+			<version>2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>3.6.9.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-c3p0</artifactId>
+			<version>3.6.9.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>2.5</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet.jsp</groupId>
+			<artifactId>jsp-api</artifactId>
+			<version>2.1</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>javax.persistence</groupId>
+			<artifactId>persistence-api</artifactId>
+			<version>1.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>jstl</artifactId>
+			<version>1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>javassist</groupId>
+			<artifactId>javassist</artifactId>
+			<version>3.12.1.GA</version>
+		</dependency>
+	</dependencies>
+</project>
+
+
+
+--------------------------------
+package com.bilal.utility;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Component;
+
+import com.bilal.schemas.Student;
+
+@Component
+public class CommonService {
+
+	public Student convertModelToResponseStudent(com.bilal1.model.Student modelStudent) {
+		Student responseStudent=new Student();
+		responseStudent.setStudentId(modelStudent.getStudentId());
+		responseStudent.setStudentName(modelStudent.getStudentName());
+		responseStudent.setStudentMarks(modelStudent.getStudentMarks());
+		return responseStudent;
+	}
+	public List<Student> convertModelListToResponseStudentList(List<com.bilal1.model.Student> students){
+		List<Student> listStudent=new ArrayList<Student>();
+		for(com.bilal1.model.Student s:students) {
+			listStudent.add(convertModelToResponseStudent(s));
+		}
+		return listStudent;
+	}
+	
+	public com.bilal1.model.Student convertResponseStudentToModelStudent(Student s){
+	
+		com.bilal1.model.Student student=new com.bilal1.model.Student();
+		student.setStudentId(s.getStudentId());
+		student.setStudentName(s.getStudentName());
+		student.setStudentMarks(s.getStudentMarks());
+		return student;
+	}
+}
+-----------------------------------
+package com.bilal1.dao;
+
+import java.util.List;
+
+import org.hibernate.Query;
+import org.hibernate.SessionFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.bilal1.model.Student;
+
+@Repository
+@Transactional
+public class StudentDaoImpl implements StudentDao {
+
+	@Autowired
+	SessionFactory sessionFactory;
+	
+	@Override
+	@Transactional
+	public void insertStudent(Student student) {
+		if(student != null) {
+			this.sessionFactory.getCurrentSession().save(student);
+		}
+	}
+
+	@Override
+	@Transactional
+	public void updateStudent(Student student) {
+		if(student != null) {
+			this.sessionFactory.getCurrentSession().update(student);
+		}
+	}
+
+	@Override
+	@Transactional
+	public List<Student> getAllStudents(int studentId) {
+		List<Student> studentList=this.sessionFactory.getCurrentSession().createQuery("From Student").list();
+		return studentList;
+	}
+
+	@Override
+	@Transactional
+	public Student getStudentbyId(int studentId) {
+		Query q=this.sessionFactory.getCurrentSession().createQuery(" From Student where studentId=:sid");
+		q.setParameter("sid", studentId);
+		Student s=(Student) q.list().get(0);
+		return s;
+	}
+
+	@Override
+	@Transactional
+	public void deleteStudentById(int studentId) {
+		Student s=getStudentbyId(studentId);
+		this.sessionFactory.getCurrentSession().delete(s);
+	}
+}
+-----------------------------
+package com.bilal1.model;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+@Entity
+@Table
+public class Student {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	int studentId;
+	@Column
+	String studentName;
+	@Column
+	int studentMarks;
+	
+	public int getStudentId() {
+		return studentId;
+	}
+	public Student(int studentId, String studentName, int studentMarks) {
+		super();
+		this.studentId = studentId;
+		this.studentName = studentName;
+		this.studentMarks = studentMarks;
+	}
+	public Student() {
+	}
+	public void setStudentId(int studentId) {
+		this.studentId = studentId;
+	}
+	public String getStudentName() {
+		return studentName;
+	}
+	public void setStudentName(String studentName) {
+		this.studentName = studentName;
+	}
+	public int getStudentMarks() {
+		return studentMarks;
+	}
+	public void setStudentMarks(int studentMarks) {
+		this.studentMarks = studentMarks;
+	}
+	
+	
+}
+
+-------------------------------------
+package com.bilal1.service;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.bilal1.dao.StudentDao;
+import com.bilal1.model.Student;
+
+@Service
+public class StudentServiceImpl implements StudentService {
+
+	@Autowired
+	StudentDao studentDao;
+	
+	@Override
+	public void insertStudent(Student student) {
+		studentDao.insertStudent(student);	
+	}
+
+	@Override
+	public void updateStudent(Student student) {
+		studentDao.updateStudent(student);
+	}
+
+	@Override
+	public List<Student> getAllStudents(int studentId) {
+		return studentDao.getAllStudents(studentId);
+	}
+
+	@Override
+	public Student getStudentbyId(int studentId) {
+		return studentDao.getStudentbyId(studentId);
+	}
+
+	@Override
+	public void deleteStudentById(int studentId) {
+		studentDao.deleteStudentById(studentId);
+	}
+
+}
+----------------------------------
+
+package com.bilal1.ws;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ws.server.endpoint.annotation.Endpoint;
+import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
+import org.springframework.ws.server.endpoint.annotation.RequestPayload;
+import org.springframework.ws.server.endpoint.annotation.ResponsePayload;
+
+import com.bilal.schemas.DeleteStudentByIdRequest;
+import com.bilal.schemas.DeleteStudentByIdResponse;
+import com.bilal.schemas.GetAllStudentsRequest;
+import com.bilal.schemas.GetAllStudentsResponse;
+import com.bilal.schemas.GetStudentByIdRequest;
+import com.bilal.schemas.GetStudentByIdResponse;
+import com.bilal.schemas.InsertStudentRequest;
+import com.bilal.schemas.InsertStudentResponse;
+import com.bilal.schemas.UpdateStudentRequest;
+import com.bilal.schemas.UpdateStudentResponse;
+import com.bilal.utility.CommonService;
+import com.bilal1.model.Student;
+import com.bilal1.service.StudentService;
+
+@Endpoint
+public class StudentEndPoint {
+
+	public static final String NAMESPACE_URI="http://bilal.com/schemas";
+	@Autowired
+	private StudentService studentService;
+	@Autowired
+	private CommonService commonService;
+	
+	@PayloadRoot(namespace = NAMESPACE_URI,localPart = "GetStudentByIdRequest")
+	@ResponsePayload
+	public GetStudentByIdResponse getStudentByIdRequest(@RequestPayload GetStudentByIdRequest request) throws Exception {
+		Student s=studentService.getStudentbyId(request.getStudentId());
+		com.bilal.schemas.Student responseStudent=new com.bilal.schemas.Student();
+		responseStudent=commonService.convertModelToResponseStudent(s);
+		GetStudentByIdResponse response=new GetStudentByIdResponse();
+		response.setStudent(responseStudent);
+		return response;
+	}
+	
+	@PayloadRoot(namespace = NAMESPACE_URI,localPart = "GetAllStudentsRequest")
+	@ResponsePayload
+	public GetAllStudentsResponse getAllStudentRequest(@RequestPayload GetAllStudentsRequest request) {
+		GetAllStudentsResponse r=new GetAllStudentsResponse();
+		List<Student> std=new ArrayList<Student>();
+		std.add(new Student(11,"Ankit",70));
+		std.add(new Student(121,"Saxena",50));
+		try {
+			List<Student> students=studentService.getAllStudents(0)!= null ? studentService.getAllStudents(0) : std ;
+			List<com.bilal.schemas.Student> responseStudents=commonService.convertModelListToResponseStudentList(students);
+			r.setStudents(responseStudents);
+		}
+		catch(Exception e) {
+			System.out.println(e.getMessage());
+		}
+		return r;
+	}
+	
+	@PayloadRoot(namespace = NAMESPACE_URI,localPart = "DeleteStudentByIdRequest")
+	@ResponsePayload
+	public DeleteStudentByIdResponse deleteStudentByIdRequest(@RequestPayload DeleteStudentByIdRequest request) {
+		studentService.deleteStudentById(request.getStudentId());
+		DeleteStudentByIdResponse response=new DeleteStudentByIdResponse();
+		List<Student> students=studentService.getAllStudents(0);
+		List<com.bilal.schemas.Student> responseStudents=commonService.convertModelListToResponseStudentList(students);
+		response.setStudents(responseStudents);
+		return response;
+	}
+	
+	@PayloadRoot(namespace = NAMESPACE_URI,localPart = "InsertStudentRequest")
+	@ResponsePayload
+	public InsertStudentResponse insertStudentRequest(@RequestPayload InsertStudentRequest request) {
+		studentService.insertStudent(commonService.convertResponseStudentToModelStudent(request.getStudent()));
+		InsertStudentResponse response=new InsertStudentResponse();
+		List<Student> students=studentService.getAllStudents(0);
+		List<com.bilal.schemas.Student> responseStudents=commonService.convertModelListToResponseStudentList(students);
+		response.setStudents(responseStudents);
+		return response;
+	}
+	
+	@PayloadRoot(namespace = NAMESPACE_URI,localPart = "UpdateStudentRequest")
+	@ResponsePayload
+	public UpdateStudentResponse updateStudentRequest(@RequestPayload UpdateStudentRequest request) {
+		UpdateStudentResponse response=new UpdateStudentResponse();
+		studentService.updateStudent(commonService.convertResponseStudentToModelStudent(request.getStudent()));
+		List<Student> students=studentService.getAllStudents(0);
+		List<com.bilal.schemas.Student> responseStudents=commonService.convertModelListToResponseStudentList(students);
+		response.setStudents(responseStudents);
+		return response;
+	}
+}
+--------------------------
+#Database related properties
+database.driver=com.microsoft.sqlserver.jdbc.SQLServerDriver
+database.url=jdbc:sqlserver://192.168.101.143:1440;databaseName=test_demo
+database.user=Bilal
+database.password=g@b12345
+
+#Hibernate related properties
+hibernate.dialect=org.hibernate.dialect.SQLServerDialect
+hibernate.show_sql=true
+hibernate.format_sql=true
+hibernate.hbm2ddl.auto=update
+------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:sws="http://www.springframework.org/schema/web-services"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	   http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+       http://www.springframework.org/schema/web-services 
+       http://www.springframework.org/schema/web-services/web-services-2.0.xsd
+       http://www.springframework.org/schema/tx 
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+       http://www.springframework.org/schema/context 
+   	   http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+	<sws:annotation-driven />
+	<context:component-scan base-package="com.bilal,com.bilal1" />
+	<context:property-placeholder location="classpath:application.properties" />
+	<sws:dynamic-wsdl id="students" 
+	portTypeName="StudentPort" 
+	locationUri="/studentService/"
+	targetNamespace="http://bilal.com/schemas/definations">
+	<sws:xsd location="/WEB-INF/students.xsd"/>
+	</sws:dynamic-wsdl>
+	<bean class="org.apache.commons.dbcp2.BasicDataSource"
+		id="dataSource">
+		<property name="driverClassName" value="com.microsoft.sqlserver.jdbc.SQLServerDriver"></property>
+		<property name="url" value="jdbc:sqlserver://192.168.101.143:1440;databaseName=test_demo"></property>
+		<property name="username" value="eProcDeveloper"></property>
+		<property name="password" value="Epr0c@1234!"></property>
+	</bean>
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"></property>
+		
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">${hibernate.dialect}</prop>
+				<prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+				<prop key="hibernate.format_sql">${hibernate.format_sql}</prop>
+				<prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+			</props>
+		</property>
+		<property name="packagesToScan" value="com.bilal1.model"></property>
+		<!-- <property name="packagesToScan" value="com.model"></property> -->
+	</bean>
+	<bean id="transactionManager"
+  class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+    <property name="sessionFactory" ref="sessionFactory" />
+</bean>
+<tx:annotation-driven transaction-manager="transactionManager"/>
+</beans>
+------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:tns="http://bilal.com/schemas"
+	targetNamespace="http://bilal.com/schemas"
+	elementFormDefault="qualified">
+	<xs:element name="GetStudentByIdRequest">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="studentId" type="xs:int"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- GetStudentByIdRequest END -->
+	<xs:element name="GetStudentByIdResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="student" type="tns:Student"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- GetStudentByIdResponse END -->
+	<xs:element name="GetAllStudentsRequest">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="studentId" type="xs:int"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- GetAllStudentsRequest END -->
+	<xs:element name="GetAllStudentsResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" minOccurs="0" type="tns:Student"
+					name="students"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- GetAllStudentResponse END -->
+	<xs:element name="InsertStudentRequest">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="student" type="tns:Student"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- InsertStudentRequest END -->
+	<xs:element name="InsertStudentResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element maxOccurs="unbounded" minOccurs="0" type="tns:Student"
+					name="students"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- InsertStudentResponse END -->
+	<xs:element name="UpdateStudentRequest">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="student" type="tns:Student"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- UpdateStuentRequest END -->
+	<xs:element name="UpdateStudentResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="students" type="tns:Student"
+					maxOccurs="unbounded" minOccurs="0"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- UpdateStudentResponse END -->
+	<xs:element name="DeleteStudentByIdRequest">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element type="xs:int" name="studentId"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element><!-- DeleteStudentByIdRequest END -->
+	<xs:element name="DeleteStudentByIdResponse">
+	<xs:complexType>
+	<xs:sequence>
+	<xs:element type="tns:Student" name="students" maxOccurs="unbounded" minOccurs="0"></xs:element>
+	</xs:sequence>
+	</xs:complexType>
+	</xs:element><!-- DeleteStudentByIdResponse END -->
+	<xs:complexType name="Student">
+		<xs:sequence>
+			<xs:element name="studentId" type="xs:int"></xs:element>
+			<xs:element name="studentName" type="xs:string"></xs:element>
+			<xs:element name="studentMarks" type="xs:int"></xs:element>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>
+------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd"
+         version="2.4">
+
+    <display-name>Archetype Created Web Application</display-name>
+
+    <servlet>
+        <servlet-name>spring-ws</servlet-name>
+        <servlet-class>org.springframework.ws.transport.http.MessageDispatcherServlet</servlet-class>
+        <init-param>
+			<param-name>transformWsdlLocations</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>spring-ws</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+
+</web-app>
