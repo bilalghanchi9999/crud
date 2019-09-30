@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.bilal</groupId>
+	<artifactId>studentwebserviceserver</artifactId>
+	<packaging>war</packaging>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>studentwebserviceserver Spring-WS Application</name>
+	<url>http://www.springframework.org/spring-ws</url>
+	<build>
+		<finalName>studentwebserviceserver</finalName>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.ws</groupId>
+			<artifactId>spring-ws-core</artifactId>
+			<version>2.1.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>com.microsoft</groupId>
+			<artifactId>sqljdbc4</artifactId>
+			<version>3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.7.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-dbcp2</artifactId>
+			<version>2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>3.6.9.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-c3p0</artifactId>
+			<version>3.6.9.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>2.5</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet.jsp</groupId>
+			<artifactId>jsp-api</artifactId>
+			<version>2.1</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>javax.persistence</groupId>
+			<artifactId>persistence-api</artifactId>
+			<version>1.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>jstl</artifactId>
+			<version>1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>javassist</groupId>
+			<artifactId>javassist</artifactId>
+			<version>3.12.1.GA</version>
+		</dependency>
+	</dependencies>
+</project>
+-----------------------------
+package com.bilal.utility;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class SaveFile {
+
+	public String saveDocument(byte[] data,String fileName) throws IOException {
+		String retVal="";
+		OutputStream outputStream=null;
+		try
+		{
+			File myFile=new File("D:/consumer/Documents/"+fileName);
+			outputStream=new FileOutputStream(myFile);
+			if(myFile.exists()) {
+				retVal="File Already Exist";
+			}
+			else
+			{
+				outputStream.write(data);
+				retVal="File Saved on Server Directory"+myFile.getPath();
+			}			
+		}
+		catch(Exception e) {
+			retVal="File Not Saved With Error"+e.getMessage();
+		}
+		finally {
+			outputStream.flush();
+			outputStream.close();
+		}
+		return retVal;
+	}
+}
+--------------------
+package com.bilal1.ws;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ws.server.endpoint.annotation.Endpoint;
+import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
+import org.springframework.ws.server.endpoint.annotation.RequestPayload;
+import org.springframework.ws.server.endpoint.annotation.ResponsePayload;
+
+import com.bilal.schemas.UploadDocumentRequest;
+import com.bilal.schemas.UploadDocumentResponse;
+import com.bilal.utility.SaveFile;
+
+
+@Endpoint
+public class StudentEndPoint {
+
+	public static final String NAMESPACE_URI="http://bilal.com/schemas";
+	@Autowired
+	SaveFile saveFile;
+	
+	@PayloadRoot(namespace = NAMESPACE_URI,localPart = "UploadDocumentRequest")
+	@ResponsePayload
+	public UploadDocumentResponse uploadDocumentRequest(@RequestPayload UploadDocumentRequest request) throws Exception
+	{
+		UploadDocumentResponse response=new UploadDocumentResponse();
+		String res="";
+		try {
+			byte[] data=request.getDocument();
+			String fileName=request.getFileName();
+			res=saveFile.saveDocument(data, fileName);
+		}
+		catch(Exception e) {
+			res="File Not Saved Due to Exception"+e.getMessage();
+		}
+		response.setResult(res);
+		return response;
+	}
+}
+------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:sws="http://www.springframework.org/schema/web-services"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	   http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+       http://www.springframework.org/schema/web-services 
+       http://www.springframework.org/schema/web-services/web-services-2.0.xsd
+       http://www.springframework.org/schema/tx 
+       http://www.springframework.org/schema/tx/spring-tx.xsd
+       http://www.springframework.org/schema/context 
+   	   http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+	<sws:annotation-driven />
+	<context:component-scan
+		base-package="com.bilal,com.bilal1" />
+	<sws:dynamic-wsdl id="students"
+		portTypeName="StudentPort" locationUri="/studentService/"
+		targetNamespace="http://bilal.com/schemas/definations">
+		<sws:xsd location="/WEB-INF/students.xsd" />
+	</sws:dynamic-wsdl>
+
+</beans>
+-----------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:tns="http://bilal.com/schemas"
+	targetNamespace="http://bilal.com/schemas"
+	elementFormDefault="qualified">
+	<xs:element name="UploadDocumentRequest">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="document" type="xs:base64Binary"></xs:element>
+				<xs:element name="fileName" type="xs:string"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="UploadDocumentResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="result" type="xs:string"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
+--------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd"
+         version="2.4">
+
+    <display-name>Archetype Created Web Application</display-name>
+
+    <servlet>
+        <servlet-name>spring-ws</servlet-name>
+        <servlet-class>org.springframework.ws.transport.http.MessageDispatcherServlet</servlet-class>
+        <init-param>
+			<param-name>transformWsdlLocations</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>spring-ws</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+
+</web-app>
+------------------------
