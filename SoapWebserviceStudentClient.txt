@@ -1,0 +1,553 @@
+Controller
+-----------------------
+package com.bilal.client.controller;
+
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.bilal.client.model.Student;
+import com.bilal.client.utility.Client;
+import com.bilal.client.utility.CommonUtility;
+
+@Controller
+public class HomeController 
+{
+	@Autowired
+	CommonUtility commonUtility;
+	@Autowired
+	Client client;
+
+	@RequestMapping(value = "/",method = RequestMethod.GET )
+	public ModelAndView home(ModelAndView model) {
+		model.setViewName("HomePage");
+		return model;
+	}
+	@RequestMapping(value = "/GetAllStudentDetails",method = RequestMethod.GET )
+	public ModelAndView getAllStudentsDetails(ModelAndView model) {
+		List<Student> modelStudentList=commonUtility.getModelStudentList(client.getAllStudentResponse(0).getStudents());
+		model.addObject("studentList", modelStudentList);
+		model.setViewName("GetAllStudentList");
+		return model;
+	}
+	
+	@RequestMapping(value = "/GetStudentByIdDetails",method = RequestMethod.GET)
+	public ModelAndView getStudentById(ModelAndView model,HttpServletRequest req) {
+		model.setViewName("GetStudentByIdDetails");
+		return model;
+	}
+	
+	@RequestMapping(value = "/InsertStudent",method = RequestMethod.GET)
+	public ModelAndView insertStudent(ModelAndView model) {
+		model.setViewName("InsertEditStudent");
+		model.addObject("Student",new Student(0,"",0));
+		return model;
+	}
+	
+	@RequestMapping(value = "/DeleteStudentById/{id}",method = RequestMethod.GET)
+	public ModelAndView deleteStudentById(@PathVariable("id") int id,ModelAndView model) {
+		client.deleteStudentByIdResponse(id);
+		model.setViewName("redirect:/GetAllStudentDetails");
+		return model;
+	}
+	@RequestMapping(value = "/getStudentByIdAjax/{sId}",method = RequestMethod.GET)
+	@ResponseBody
+	public String getStudentByIdAjax(@PathVariable("sId") int sId) {
+		String response="";
+		Student s=commonUtility.getModelStudent(client.getStudentByIdResponse(sId).getStudent());
+		if(s!=null) {
+			StringBuilder sb=new StringBuilder();
+			sb.append("<table><tr><td>StudentId</td><td>StudentName</td><td>StudentMarks</td></tr>");
+			sb.append("<tr><td>"+s.getStudentId()+"</td><td>"+s.getStudentName()+"</td><td>"+s.getStudentMarks()+"</td></tr></table>");
+			response=sb.toString();
+		}
+		else
+		{
+			response="<P>Not Exist!!</P>";
+		}
+		return response;
+	}
+	@RequestMapping(value = {"UpdateStudent","EditStudent/UpdateStudent"},method = RequestMethod.POST)
+	public ModelAndView updateStudent(@ModelAttribute("Student") Student student,ModelAndView model) {
+		if(student.getStudentId() == 0) {
+			client.insertStudentResponse(student);
+		}
+		else
+		{
+			client.updateStudentResponse(student);
+		}
+		model.setViewName("redirect:/GetAllStudentDetails");
+		return model;
+	}
+	@RequestMapping(value = "/EditStudent/{id}",method = RequestMethod.GET)
+	public ModelAndView editStudent(@PathVariable("id") int id,ModelAndView model) {
+		Student s=commonUtility.getModelStudent(client.getStudentByIdResponse(id).getStudent());
+		model.addObject("Student",s);
+		model.setViewName("InsertEditStudent");
+		return model;
+	}
+}
+
+-----------------------------------------
+package com.bilal.client.model;
+
+public class Student {
+
+	private int studentId;
+	private String studentName;
+	private int studentMarks;
+	
+	
+	
+	public Student() {
+		super();
+	}
+	public Student(int studentId, String studentName, int studentMarks) {
+		super();
+		this.studentId = studentId;
+		this.studentName = studentName;
+		this.studentMarks = studentMarks;
+	}
+	public int getStudentId() {
+		return studentId;
+	}
+	public void setStudentId(int studentId) {
+		this.studentId = studentId;
+	}
+	public String getStudentName() {
+		return studentName;
+	}
+	public void setStudentName(String studentName) {
+		this.studentName = studentName;
+	}
+	public int getStudentMarks() {
+		return studentMarks;
+	}
+	public void setStudentMarks(int studentMarks) {
+		this.studentMarks = studentMarks;
+	}
+	
+}
+---------------------------------
+package com.bilal.client.utility;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.oxm.Marshaller;
+import org.springframework.oxm.jaxb.Jaxb2Marshaller;
+import org.springframework.stereotype.Component;
+import org.springframework.ws.client.core.WebServiceTemplate;
+import org.springframework.ws.client.core.support.WebServiceGatewaySupport;
+import org.springframework.ws.soap.client.core.SoapActionCallback;
+
+import com.bilal.client.model.Student;
+import com.bilal.schemas.DeleteStudentByIdRequest;
+import com.bilal.schemas.DeleteStudentByIdResponse;
+import com.bilal.schemas.GetAllStudentsRequest;
+import com.bilal.schemas.GetAllStudentsResponse;
+import com.bilal.schemas.GetStudentByIdRequest;
+import com.bilal.schemas.GetStudentByIdResponse;
+import com.bilal.schemas.InsertStudentRequest;
+import com.bilal.schemas.InsertStudentResponse;
+import com.bilal.schemas.UpdateStudentRequest;
+import com.bilal.schemas.UpdateStudentResponse;
+
+@Component
+public class Client  extends WebServiceGatewaySupport {
+
+	@Autowired
+	CommonUtility commonUtility;
+	@Autowired
+	Jaxb2Marshaller marshaller;
+	
+	public GetAllStudentsResponse getAllStudentResponse(int studentNo) {
+		GetAllStudentsRequest request=new GetAllStudentsRequest();
+		request.setStudentId(studentNo);
+		WebServiceTemplate temp=getWebServiceTemplate();
+		temp.setMarshaller(marshaller);
+		temp.setUnmarshaller(marshaller);
+		GetAllStudentsResponse response=(GetAllStudentsResponse) temp.marshalSendAndReceive("http://localhost:8888/studentwebserviceserver/GetAllStudentsResponse",request);
+		return response;
+	}
+	
+	public GetStudentByIdResponse getStudentByIdResponse(int studentNo) {
+		GetStudentByIdRequest request=new GetStudentByIdRequest();
+		request.setStudentId(studentNo);
+		WebServiceTemplate temp=getWebServiceTemplate();
+		temp.setMarshaller(marshaller);
+		temp.setUnmarshaller(marshaller);
+		GetStudentByIdResponse response=(GetStudentByIdResponse) temp.marshalSendAndReceive("http://localhost:8888/studentwebserviceserver/GetStudentByIdResponse",request);
+		return response;
+	}
+	
+	public InsertStudentResponse insertStudentResponse(Student modelStudent) {
+		com.bilal.schemas.Student xmlStudent=commonUtility.getXMLStudent(modelStudent);
+		InsertStudentRequest request=new InsertStudentRequest();
+		request.setStudent(xmlStudent);
+		WebServiceTemplate temp=getWebServiceTemplate();
+		temp.setMarshaller(marshaller);
+		temp.setUnmarshaller(marshaller);
+		InsertStudentResponse response=(InsertStudentResponse) temp.marshalSendAndReceive("http://localhost:8888/studentwebserviceserver/InsertStudentResponse",request);
+		return response;
+	}
+	public DeleteStudentByIdResponse deleteStudentByIdResponse(int studentId) {
+		DeleteStudentByIdRequest request = new DeleteStudentByIdRequest();
+		request.setStudentId(studentId);
+		WebServiceTemplate temp=getWebServiceTemplate();
+		temp.setMarshaller(marshaller);
+		temp.setUnmarshaller(marshaller);
+		DeleteStudentByIdResponse response = (DeleteStudentByIdResponse)temp.marshalSendAndReceive("http://localhost:8888/studentwebserviceserver/InsertStudentResponse",request);
+		return response;
+	}
+	public UpdateStudentResponse updateStudentResponse(Student modelStudent) {
+		UpdateStudentRequest request=new UpdateStudentRequest();
+		com.bilal.schemas.Student xmlStudent=commonUtility.getXMLStudent(modelStudent);
+		request.setStudent(xmlStudent);
+		WebServiceTemplate temp=getWebServiceTemplate();
+		temp.setMarshaller(marshaller);
+		temp.setUnmarshaller(marshaller);
+		UpdateStudentResponse response=(UpdateStudentResponse)temp.marshalSendAndReceive("http://localhost:8888/studentwebserviceserver/InsertStudentResponse",request);
+		return response;
+	}
+}
+
+
+--------------------------------------------
+package com.bilal.client.utility;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.oxm.jaxb.Jaxb2Marshaller;
+
+
+
+@Configuration
+public class ClientConfig {
+
+	@Bean
+	public Jaxb2Marshaller marshaller() {
+		Jaxb2Marshaller marshaller=new Jaxb2Marshaller();
+		marshaller.setContextPath("com.bilal");
+		return marshaller;
+	}
+	@Bean
+	public Client client(Jaxb2Marshaller marshaller) {
+		Client client=new Client();
+		client.setDefaultUri("http://localhost:8888/studentwebserviceserver");
+		client.setMarshaller(marshaller);
+		client.setUnmarshaller(marshaller);
+		return client;
+	}
+}
+
+----------------------------------
+package com.bilal.client.utility;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Component;
+
+import com.bilal.schemas.Student;
+
+@Component
+public class CommonUtility {
+
+	public Student getXMLStudent(com.bilal.client.model.Student s) {
+		Student s1=new Student();
+		s1.setStudentId(s.getStudentId());
+		s1.setStudentName(s.getStudentName());
+		s1.setStudentMarks(s.getStudentMarks());
+		return s1;
+	}
+	public List<Student> getXmlStudentList(List<com.bilal.client.model.Student> listStudents){
+		List<Student> retVal=new ArrayList<Student>();
+		for(com.bilal.client.model.Student temp:listStudents) {
+			retVal.add(getXMLStudent(temp));
+		}
+		return retVal;
+	}
+	
+	public com.bilal.client.model.Student getModelStudent(Student student){
+		com.bilal.client.model.Student retVal=new com.bilal.client.model.Student();
+		retVal.setStudentId(student.getStudentId());
+		retVal.setStudentName(student.getStudentName());
+		retVal.setStudentMarks(student.getStudentMarks());
+		return retVal;
+	}
+	public List<com.bilal.client.model.Student> getModelStudentList(List<Student> students){
+		List<com.bilal.client.model.Student> list=new ArrayList<com.bilal.client.model.Student>();
+		for(Student s:students) {
+			list.add(getModelStudent(s));
+		}
+		return list;
+	}
+}
+------------------------------------
+spring-servlet.xml
+--------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	 xmlns:oxm="http://www.springframework.org/schema/oxm"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+		 http://www.springframework.org/schema/oxm  http://www.springframework.org/schema/oxm/spring-oxm-3.0.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd">
+	<context:component-scan
+		base-package="com.bilal.client , com.bilal.*"></context:component-scan>
+	<mvc:annotation-driven />
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/views/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+	 <bean id="marshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+        <property name="contextPath" value="com.bilal.schemas" />
+        <property name="mtomEnabled" value="true" />
+    </bean>
+
+    <bean id="marshallingPayloadMethodProcessor"
+        class="org.springframework.ws.server.endpoint.adapter.method.MarshallingPayloadMethodProcessor">
+        <constructor-arg ref="marshaller" />
+        <constructor-arg ref="marshaller" />
+    </bean>
+</beans>
+
+----------------------------------------------------
+web.xml
+-------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd" id="WebApp_ID" version="3.0">
+  <display-name>Client</display-name>
+<servlet>
+        <servlet-name>spring</servlet-name>
+        <servlet-class>
+                org.springframework.web.servlet.DispatcherServlet
+        </servlet-class>
+        <init-param>
+       		<param-name>contextConfigLocation</param-name>
+       		<param-value>/WEB-INF/spring-servlet.xml</param-value>
+    		</init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+    <servlet-name>spring</servlet-name>
+    <url-pattern>/</url-pattern>
+    </servlet-mapping>
+  </web-app>
+  -------------------------------------------------------
+  GetAllStudentList.jsp
+  ------------------------------------------------
+  <%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+	pageEncoding="ISO-8859-1"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="form"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>List OF Students</title>
+</head>
+<body>
+	<table>
+		<tr>
+			<td>StudentId</td>
+			<td>StudentName</td>
+			<td>StudentMarks</td>
+			<td>Actions</td>
+		</tr>
+		<c:forEach items="${studentList}" var="student">
+			<tr>
+				<td>${student.studentId}</td>
+				<td>${student.studentName}</td>
+				<td>${student.studentMarks}</td>
+				<td><a href="EditStudent/${student.studentId}">Edit</a> |
+					<a href="DeleteStudentById/${student.studentId}">Delete</a>   
+				</td>
+			</tr>
+		</c:forEach>
+	</table>
+</body>
+</html>
+-----------------------------------------------
+GetStudentByIdDetails.jsp
+-----------------------------------------------
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+	pageEncoding="ISO-8859-1"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="form"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script>
+function getAjaxStudent(){
+	var sid=$('#studentNo').val();
+	$.ajax({
+		url:"getStudentByIdAjax/"+sid,
+		type:"GET",
+		success:function(data){
+			$('#myStudent').html(data);
+		}
+	});
+}
+</script>
+<title>GetStudentByIdDetails</title>
+</head>
+<body>
+Enter Student Number:- <input type="number" name="studentNo" id="studentNo">
+<button name="GetStudent" value="GetStudent" onclick="getAjaxStudent();">GetStudent</button>
+<br><br>
+<div id="myStudent"></div>
+</body>
+</html>
+------------------------------------------
+HomePage.jsp
+------------------------------------------
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+	pageEncoding="ISO-8859-1"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="form"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>HOME PAGE</title>
+</head>
+<body>
+	<a href="GetAllStudentDetails">GetAllStudentDetails</a><br>
+	<a href="GetStudentByIdDetails">GetStudentByIdDetails</a><br>
+	<a href="InsertStudent">InsertStudent</a><br>
+</body>
+</html>
+
+--------------------------------------
+InsertEditStudent.jsp
+-------------------------------------
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+	pageEncoding="ISO-8859-1"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="form"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+<form:form action="UpdateStudent" modelAttribute="Student" method="POST">
+Enter ID:-<input type="number" name="studentId" value="${Student.studentId}" readonly="readonly">
+Enter Name:-<input type="text" name="studentName" value="${Student.studentName}"> 
+Enter Marks:-<input type="text" name="studentMarks" value="${Student.studentMarks}">
+<input type="submit" value="Insert">
+</form:form>
+</body>
+</html>
+-------------------------------
+pom.xml
+---------------------------------
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.bilal</groupId>
+	<artifactId>studentwebserviceclient</artifactId>
+	<packaging>war</packaging>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>studentwebserviceclient Maven Webapp</name>
+	<url>http://maven.apache.org</url>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.ws</groupId>
+			<artifactId>spring-ws-core</artifactId>
+			<version>2.1.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.7.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-tx</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>3.2.4.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>2.3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.xml.bind</groupId>
+			<artifactId>jaxb-impl</artifactId>
+			<version>2.3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>2.5</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet.jsp</groupId>
+			<artifactId>jsp-api</artifactId>
+			<version>2.1</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>jstl</artifactId>
+			<version>1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>javassist</groupId>
+			<artifactId>javassist</artifactId>
+			<version>3.12.1.GA</version>
+		</dependency>
+		<dependency>
+        <groupId>com.sun.xml.bind</groupId>
+        <artifactId>jaxb-core</artifactId>
+        <version>2.3.0</version>
+</dependency>
+	</dependencies>
+	<build>
+		<finalName>studentwebserviceclient</finalName>
+	</build>
+</project>
